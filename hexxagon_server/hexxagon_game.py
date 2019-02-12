@@ -1,10 +1,11 @@
 
-FIELD_INVALID = -1
-FIELD_EMPTY = 1
-FIELD_PLAYER1 = 1
-FIELD_PLAYER2 = 2
+class HexxagonGame:
 
-class Hexxagon:
+    FIELD_INVALID = -1
+    FIELD_EMPTY = 1
+    FIELD_PLAYER1 = 1
+    FIELD_PLAYER2 = 2
+
     def __init__(self):
 
         self.field_size_x = 10
@@ -23,6 +24,10 @@ class Hexxagon:
             self.get_northwest_pos
         ]
         
+    def __rule_assertion(self, rule, move_info):
+        if not rule:
+            raise Exception("Invalid move: " + str(move_info))
+
     def get_field(self, pos):
         x,y = pos
         return self.__field[x][y]
@@ -85,3 +90,24 @@ class Hexxagon:
 
         for pos in surroundings_of_other_player:
             self.set_field(pos, player)
+
+    def jump_to_field(self, from_pos, to_pos):
+        player = self.get_field(from_pos)
+
+        # todo: assert that current turn allows movement for the player on this field
+        # todo: assert that to_pos has distance two to from_pos
+        self.__rule_assertion(player != FIELD_EMPTY, ("jump_to_field", from_pos, to_pos))
+
+        self.set_field(from_pos, FIELD_EMPTY)
+        tx, ty = to_pos
+        self.conquer_field(player, tx, ty)
+    
+    def clone_to_field(self, from_pos, to_pos):
+        player = self.get_field(from_pos)
+        # todo: assert that current turn allows movement for the player on this field
+        # todo: assert that to_pos has distance two to from_pos
+        self.__rule_assertion(player != FIELD_EMPTY, ("jump_to_field", from_pos, to_pos))
+
+        self.set_field(from_pos, FIELD_EMPTY)
+        tx, ty = to_pos
+        self.conquer_field(player, tx, ty)
