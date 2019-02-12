@@ -1,3 +1,4 @@
+from pprint import pprint
 
 class RuleViolation(Exception):
     def __init__(self, move):
@@ -6,7 +7,7 @@ class RuleViolation(Exception):
 class HexxagonGame:
 
     FIELD_INVALID = -1
-    FIELD_EMPTY = 1
+    FIELD_EMPTY = 0
     FIELD_PLAYER1 = 1
     FIELD_PLAYER2 = 2
 
@@ -109,9 +110,8 @@ class HexxagonGame:
         distance = self.cube_distance(from_pos, to_pos)
 
         # todo: assert that to_pos has distance <= two to from_pos
-        self.__rule_assertion(player_id == player_on_that_field, ("move", from_pos, to_pos))
-        self.__rule_assertion(player_id != HexxagonGame.FIELD_EMPTY, ("move", from_pos, to_pos))
-        self.__rule_assertion(distance >= 1 and distance <= 3, ("move", from_pos, to_pos))
+        self.__rule_assertion(player_id == player_on_that_field, ("move", from_pos, to_pos, "player does not occupy source field"))
+        self.__rule_assertion(distance >= 1 and distance <= 3, ("move", from_pos, to_pos, "distance too small or too large"))
 
         if distance == 2:
             self.set_field(from_pos, HexxagonGame.FIELD_EMPTY)
@@ -123,9 +123,13 @@ class HexxagonGame:
         count2 = 0
         for row in self.__field:
             for value in row:
-                if value == 0:
+                if value == HexxagonGame.FIELD_EMPTY:
                     return 0
-                elif value == 1:
+                elif value == HexxagonGame.FIELD_PLAYER1:
                     count1 += 1
-                elif value == 2:
+                elif value == HexxagonGame.FIELD_PLAYER2:
                     count2 += 1
+        if count1 > count2:
+            return 1
+        else:
+            return 2

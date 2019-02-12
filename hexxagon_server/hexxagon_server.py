@@ -1,8 +1,8 @@
-from hexxagon_game import HexxagonGame
+from hexxagon_game import HexxagonGame, RuleViolation
 
 import socket
 import re
-from pprint import pprint
+from pprint import pprint, pformat
 
 class HexxagonServer:
     def __init__(self):
@@ -14,20 +14,22 @@ class HexxagonServer:
 
     def send1(self, cmd):
         self.p1_writer.write(cmd+"\n")
+        self.p1_writer.flush()
     def send2(self, cmd):
         self.p2_writer.write(cmd+"\n")
+        self.p2_writer.flush()
     def read1(self):
-        self.p1_reader.readline()
+        return self.p1_reader.readline()
     def read2(self):
-        self.p2_reader.readline()
+        return self.p2_reader.readline()
     
     def wait_for_players(self):
-        (socket1, address1) = self.listener.accept()
-        (socket2, address2) = self.listener.accept()
-        self.p1_reader = socket1.makefile('r')
-        self.p2_reader = socket2.makefile('r')
-        self.p1_writer = socket1.makefile('w')
-        self.p2_writer = socket2.makefile('w')
+        (self.p1_socket, address1) = self.listener.accept()
+        (self.p2_socket, address2) = self.listener.accept()
+        self.p1_reader = self.p1_socket.makefile('r')
+        self.p2_reader = self.p2_socket.makefile('r')
+        self.p1_writer = self.p1_socket.makefile('w')
+        self.p2_writer = self.p2_socket.makefile('w')
         map_info = self.get_map_info()
         self.send1("YOUR_ID 1")
         self.send1(map_info)
@@ -46,12 +48,9 @@ class HexxagonServer:
                     map += " %d %d %d %d" % (x, y, z, value)
         return map
 
-    __REGEX_MOVE = re.compile(r'^MOVE (?P<x1>[0-9]+) (?P<y1>[0-9]+) (?P<z1>[0-9]+) (?P<x2>[0-9]+) (?P<y2>[0-9]+) (?P<z2>[0-9]+)$')
+    __REGEX_MOVE = re.compile(r'^MOVE (?P<x1>\-?[0-9]+) (?P<y1>\-?[0-9]+) (?P<z1>\-?[0-9]+) (?P<x2>\-?[0-9]+) (?P<y2>\-?[0-9]+) (?P<z2>\-?[0-9]+)$')
 
     def parse_cmd(self, player_id, cmd):
-        print(">>>>>>>>>>>>>>>")
-        pprint(player_id)
-        pprint(cmd)
 
         if cmd is None:
             return False
@@ -61,12 +60,12 @@ class HexxagonServer:
         if move_match is None:
             return False
 
-        x1 = move_match.group('x1')
-        y1 = move_match.group('y1')
-        z1 = move_match.group('z1')
-        x2 = move_match.group('x2')
-        y2 = move_match.group('y2')
-        z2 = move_match.group('z2')
+        x1 = int(move_match.group('x1'))
+        y1 = int(move_match.group('y1'))
+        z1 = int(move_match.group('z1'))
+        x2 = int(move_match.group('x2'))
+        y2 = int(move_match.group('y2'))
+        z2 = int(move_match.group('z2'))
 
         self.game.move(player_id, (x1, y1, z1), (x2, y2, z2))
         return True
@@ -78,11 +77,20 @@ class HexxagonServer:
 
         while True:
             cmd_p1 = self.read1()
-            move1_ok = self.parse_cmd(1, cmd_p1)
-            
-            if not move1_ok:
-                self.send1("DISQUALIFIED invalid move")
+            print("Received move from player 1: " + cmd_p1)
+
+            try:
+                move1_ok = self.parse_cmd(1, cmd_p1)
+                
+                if not move1_ok:
+                    self.send1("DISQUALIFIED invalid command syntax")
+                    winner = 2
+                    print("Ending game because of rule violation")
+                    break
+            except RuleViolation as violation:
+                self.send1("DISQUALIFIED rule violation "+pformat(violation))
                 winner = 2
+                print("Ending game because of rule violation")
                 break
             
             self.send2(cmd_p1)
@@ -93,11 +101,20 @@ class HexxagonServer:
                 break
 
             cmd_p2 = self.read2()
-            move2_ok = self.parse_cmd(2, cmd_p2)
+            print("Received move from player 2: " + cmd_p2)
 
-            if not move2_ok:
-                self.send2("DISQUALIFIED invalid move")
+            try:
+                move2_ok = self.parse_cmd(2, cmd_p2)
+
+                if not move2_ok:
+                    self.send2("DISQUALIFIED invalid command syntax")
+                    winner = 1
+                    print("Ending game because of rule violation")
+                    break
+            except RuleViolation as violation:
+                self.send2("DISQUALIFIED rule violation"+pformat(violation))
                 winner = 1
+                print("Ending game because of rule violation")
                 break
 
             self.send1(cmd_p2)
