@@ -1,6 +1,15 @@
+// Map Coordinates are given in 3d cube coordinates as described here: https://www.redblobgames.com/grids/hexagons/#distances-cube
+
 YOUR_ID 1
-TURN 1
-TURN 2
-MOVE x1 y1 x1 y1
-FIELD x1 x2 1
-TIMEOUT
+
+// Map is sent in a single line at the start of the game as a list of map fields.
+// Possible field values are:
+// 0: Empty field
+// 1: Occupied by player 1
+// 2: Occupied by player 2
+MAP x1 y1 z1 value_1 x2 y2 z2 value_2 ...
+
+MOVE x1 y1 z1 x2 y2 z2
+DISQUALIFIED message
+WINNER 1
+
