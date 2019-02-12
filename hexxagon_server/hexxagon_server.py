@@ -19,14 +19,14 @@ class HexxagonServer:
         self.p2_writer.write(cmd+"\n")
         self.p2_writer.flush()
     def read1(self):
-        return self.p1_reader.readline()
+        return self.p1_reader.readline().strip()
     def read2(self):
-        return self.p2_reader.readline()
+        return self.p2_reader.readline().strip()
     
     def wait_for_players(self):
-        print("Waiting for Player1")
+        print("Waiting for player 1 to connect to port 16823")
         (self.p1_socket, address1) = self.listener.accept()
-        print("Waiting for Player2")
+        print("Waiting for player 2 to connect to port 16823")
         (self.p2_socket, address2) = self.listener.accept()
         self.p1_reader = self.p1_socket.makefile('r')
         self.p2_reader = self.p2_socket.makefile('r')
@@ -54,7 +54,7 @@ class HexxagonServer:
         for row in range(self.game.field_size_y):
             # Print odd columns
             for col in range(self.game.field_size_x):
-                if col%2!=0:
+                if col%2==0:
                     print("    ", end='')
                 else:
                     pos = self.game.evenq_to_cube((col, row))
@@ -67,7 +67,7 @@ class HexxagonServer:
             print("")
             # Print even columns
             for col in range(self.game.field_size_x):
-                if col%2==0:
+                if col%2!=0:
                     print("    ", end='')
                 else:
                     pos = self.game.evenq_to_cube((col, row))
@@ -133,6 +133,9 @@ class HexxagonServer:
             self.print_map()
 
             self.send2(cmd_p1)
+            map_info = self.get_map_info()
+            self.send1(map_info)
+            self.send2(map_info)
 
             winner = self.game.get_winner()
 
@@ -160,6 +163,10 @@ class HexxagonServer:
             self.print_map()
 
             self.send1(cmd_p2)
+            map_info = self.get_map_info()
+            self.send1(map_info)
+            self.send2(map_info)
+
 
             winner = self.game.get_winner()
 

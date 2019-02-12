@@ -18,7 +18,7 @@ class HexxagonGame:
 
     def __init__(self):
 
-        field_radius = 5
+        field_radius = 4
 
         self.field_size_x = field_radius*2 + 1
         self.field_size_y = field_radius*2 + 1
@@ -87,7 +87,7 @@ class HexxagonGame:
 
     def get_neighbor_positions(self, pos):
         x,y,z = pos
-        neighbors = [(x+dx, y+dy, z+dz) for (dx, dy, dz) in HexxagonGame.NEIGHBOR_DIRECTIONS]
+        neighbors = [self.pos_or_none((x+dx, y+dy, z+dz)) for (dx, dy, dz) in HexxagonGame.NEIGHBOR_DIRECTIONS]
         valid_neighbors = [pos for pos in neighbors if pos is not None]
         return valid_neighbors
 
