@@ -24,7 +24,9 @@ class HexxagonServer:
         return self.p2_reader.readline()
     
     def wait_for_players(self):
+        print("Waiting for Player1")
         (self.p1_socket, address1) = self.listener.accept()
+        print("Waiting for Player2")
         (self.p2_socket, address2) = self.listener.accept()
         self.p1_reader = self.p1_socket.makefile('r')
         self.p2_reader = self.p2_socket.makefile('r')
@@ -47,6 +49,36 @@ class HexxagonServer:
                 if value >= 0:
                     map += " %d %d %d %d" % (x, y, z, value)
         return map
+
+    def print_map(self):
+        for row in range(self.game.field_size_y):
+            # Print odd columns
+            for col in range(self.game.field_size_x):
+                if col%2!=0:
+                    print("    ", end='')
+                else:
+                    pos = self.game.evenq_to_cube((col, row))
+                    value = self.game.get_field(pos)
+                    # Ignore invalid fields
+                    if value >= 0:
+                        print("%d   " % value, end='')
+                    else:
+                        print("    ", end='')
+            print("")
+            # Print even columns
+            for col in range(self.game.field_size_x):
+                if col%2==0:
+                    print("    ", end='')
+                else:
+                    pos = self.game.evenq_to_cube((col, row))
+                    value = self.game.get_field(pos)
+                    # Ignore invalid fields
+                    if value >= 0:
+                        print("%d   " % value, end='')
+                    else:
+                        print("    ", end='')
+            print("")
+
 
     __REGEX_MOVE = re.compile(r'^MOVE (?P<x1>\-?[0-9]+) (?P<y1>\-?[0-9]+) (?P<z1>\-?[0-9]+) (?P<x2>\-?[0-9]+) (?P<y2>\-?[0-9]+) (?P<z2>\-?[0-9]+)$')
 
@@ -75,7 +107,11 @@ class HexxagonServer:
 
         winner = 0
 
+        print("Initial map:")
+        self.print_map()
+
         while True:
+
             cmd_p1 = self.read1()
             print("Received move from player 1: " + cmd_p1)
 
@@ -93,6 +129,9 @@ class HexxagonServer:
                 print("Ending game because of rule violation")
                 break
             
+            print("Map after player 1 move:")
+            self.print_map()
+
             self.send2(cmd_p1)
 
             winner = self.game.get_winner()
@@ -117,13 +156,16 @@ class HexxagonServer:
                 print("Ending game because of rule violation")
                 break
 
+            print("Map after player 2 move:")
+            self.print_map()
+
             self.send1(cmd_p2)
 
             winner = self.game.get_winner()
 
             if winner != 0:
                 break
-        
+        print("Game ended, winner is %d" % winner)
         self.send1("WINNER %d" % winner)
         self.send2("WINNER %d" % winner)
         
