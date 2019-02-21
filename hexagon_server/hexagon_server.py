@@ -19,7 +19,6 @@ class HexagonServer:
         self.reader = [None] * player_count
 
     def send(self, player, cmd):
-        print("sending to %d: %s" % (player, cmd))
         self.writer[player-1].write(cmd+"\n")
         self.writer[player-1].flush()
     def read(self, player):
