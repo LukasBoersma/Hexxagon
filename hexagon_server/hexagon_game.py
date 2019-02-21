@@ -17,6 +17,16 @@ class HexagonGame:
         (-1, +1, 0), (-1, 0, +1), (0, -1, +1), 
     ]
 
+    POSSIBLE_MOVE_OFFSETS = [
+        (+1, -1, 0), (+1, 0, -1), (0, +1, -1), 
+        (-1, +1, 0), (-1, 0, +1), (0, -1, +1), 
+        (0, +2, -2), (+1, +1, -2), (+2, -2, 0),
+        (+2, -1, -1), (+2, -1, 0), (+2, -2, 0),
+        (+1, -2, +1), (0, -2, +2), (-1, -1, +2),
+        (-2, 0, +2), (-2, +1, +1), (-2, +2, 0),
+        (-1, +2, -1)
+    ]
+
     def __init__(self):
 
         field_radius = 4
@@ -75,6 +85,10 @@ class HexagonGame:
         col,row = self.cube_to_evenq(pos)
         return self.__field[col][row]
 
+    def get_field_evenq(self, pos):
+        col,row = pos
+        return self.__field[col][row]
+
     def set_field(self, pos, new_value):
         col,row = self.cube_to_evenq(pos)
         self.__field[col][row] = new_value
@@ -119,6 +133,20 @@ class HexagonGame:
 
         self.conquer_field(player_id, to_pos)
     
+    def can_move(self, player_id):
+        for row in range(self.field_size_y):
+            for col in range(self.field_size_x):
+                player = self.get_field_evenq((col, row))
+                if player == player_id:
+                    (x,y,z) = self.evenq_to_cube((col, row))
+                    neighbors = [self.pos_or_none((x+dx, y+dy, z+dz)) for (dx, dy, dz) in HexagonGame.POSSIBLE_MOVE_OFFSETS]
+                    valid_neighbors = [pos for pos in neighbors if pos is not None]
+                    possible_moves = [pos for pos in valid_neighbors if self.get_field(pos) == HexagonGame.FIELD_EMPTY]
+                    if len(possible_moves) > 0:
+                        return True
+        return False
+
+
     def get_winner(self):
         count1 = 0
         count2 = 0

@@ -19,7 +19,7 @@ def run_client():
 def run_host():
     global test_server_ready
     server = HexagonServer(player_count=2, timeout=1000)
-    sleep(1)
+    sleep(0.1)
     test_server_ready = True
     server.run()
 

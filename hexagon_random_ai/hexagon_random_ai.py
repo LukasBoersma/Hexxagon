@@ -6,7 +6,8 @@ from pprint import pprint
 
 class HexagonRandomAi:
     def __init__(self, local_port=16824):
-        self.socket = socket.create_connection(("localhost", 16823), 2, ("localhost", local_port))
+        timeout = 60
+        self.socket = socket.create_connection(("localhost", 16823), timeout, ("localhost", local_port))
         self.reader = self.socket.makefile('r')
         self.writer = self.socket.makefile('w')
 
@@ -64,13 +65,16 @@ class HexagonRandomAi:
                 (x2,y2,z2,v2) = valid_neighbors[0]
                 self.send("MOVE %d %d %d %d %d %d" % (x, y, z, x2, y2, z2))
                 return
-        raise Exception("No valid moves found")
+        # Read "player_cant_move"
+        print(">>>>> No Move found")
+        self.read_cmd()
 
 
     def run(self):
         self.read_my_id()
         self.read_cmd()
         turn = 0
+        print(">>>>>>>>>> Starting")
         while True:
             turn = (turn)%2 + 1
             if turn == self.my_id:

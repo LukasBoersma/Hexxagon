@@ -19,17 +19,18 @@ class HexagonServer:
         self.reader = [None] * player_count
 
     def send(self, player, cmd):
+        print("sending to %d: %s" % (player, cmd))
         self.writer[player-1].write(cmd+"\n")
         self.writer[player-1].flush()
     def read(self, player):
         return self.reader[player-1].readline().strip()
     def send_all(self, cmd):
-        for player in [i for i in range(1, self.player_count)]:
+        for player in [i for i in range(1, self.player_count+1)]:
             self.send(player, cmd)
     
     # Sends a message to all players except the one with the given id
     def send_others(self, player, cmd):
-        other_players = [i for i in range(1, self.player_count) if i != player]
+        other_players = [i for i in range(1, self.player_count+1) if i != player]
         for other_player in other_players:
             self.send(other_player, cmd)
     
@@ -108,44 +109,61 @@ class HexagonServer:
         return True
 
     def run(self):
-        self.wait_for_players()
+        try:
+            self.wait_for_players()
 
-        winner = 0
+            winner = 0
 
-        print("Initial map:")
-        self.print_map()
+            print("Initial map:")
+            self.print_map()
+            any_move_possible = True
+            while True:
+                if not any_move_possible:
+                    print("Nobody can move. Exiting.")
+                any_move_possible = False
+                for player_id in range(1, self.player_count+1):
+                    if not self.game.can_move(player_id):
+                        self.send_all("PLAYER_CANT_MOVE")
+                    else:
+                        any_move_possible = True
+                        cmd = self.read(player_id)
+                        print("Received move from player %d: %s" % (player_id, cmd))
 
-        while True:
-            for player_id in range(1, self.player_count+1):
-                cmd = self.read(player_id)
-                print("Received move from player %d: %s" % (player_id, cmd))
+                        try:
+                            cmd_parse_ok = self.parse_cmd(player_id, cmd)
+                        except RuleViolation as violation:
+                            self.send(player_id, "DISQUALIFIED rule violation "+pformat(violation))
+                            winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
+                            print("Ending game because of rule violation")
+                            break
+                        if not cmd_parse_ok:
+                            self.send(player_id, "DISQUALIFIED invalid command syntax")
+                            winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
+                            print("Ending game because of rule violation")
+                            break
+                        
+                    print("Map after player %d move:" % player_id)
+                    self.print_map()
 
-                try:
-                    cmd_parse_ok = self.parse_cmd(player_id, cmd)
-                except RuleViolation as violation:
-                    self.send(player_id, "DISQUALIFIED rule violation "+pformat(violation))
-                    winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
-                    print("Ending game because of rule violation")
-                    break
-                if not cmd_parse_ok:
-                    self.send(player_id, "DISQUALIFIED invalid command syntax")
-                    winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
-                    print("Ending game because of rule violation")
-                    break
-                
-                print("Map after player %d move:" % player_id)
-                self.print_map()
+                    self.send_others(player_id, cmd)
+                    map_info = self.get_map_info()
+                    self.send_all(map_info)
 
-                self.send_others(player_id, cmd)
-                map_info = self.get_map_info()
-                self.send_all(map_info)
+                    winner = self.game.get_winner()
 
-                winner = self.game.get_winner()
-
+                    if winner != 0:
+                        break
                 if winner != 0:
                     break
-            if winner != 0:
-                break
-        print("Game ended, winner is %d" % winner)
-        self.send_all("WINNER %d" % winner)
+            if winner == 0:
+                print("Game ended with a draw" % winner)
+                self.send_all("DRAW")
+            else:
+                print("Game ended, winner is %d" % winner)
+                self.send_all("WINNER %d" % winner)
+        finally:
+            print("Exiting, closing all connections.")
+            for socket in self.socket:
+                socket.close()
+            self.listener.close()
         
