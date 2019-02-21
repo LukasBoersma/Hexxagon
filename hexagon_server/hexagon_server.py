@@ -1,16 +1,17 @@
-from hexxagon_game import HexxagonGame, RuleViolation
+#!/usr/bin/python3
 
+from . import HexagonGame, RuleViolation
 import socket
 import re
 from pprint import pprint, pformat
 
-class HexxagonServer:
+class HexagonServer:
     def __init__(self, player_count, timeout):
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listener.bind(("localhost", 16823))
         self.listener.listen(5)
 
-        self.game = HexxagonGame()
+        self.game = HexagonGame()
         self.player_count = player_count
         self.timeout = timeout
         self.socket = [None] * player_count
@@ -23,20 +24,20 @@ class HexxagonServer:
     def read(self, player):
         return self.reader[player-1].readline().strip()
     def send_all(self, cmd):
-        for player in [i in range(1, self.player_count)]:
-            send(player, cmd)
+        for player in [i for i in range(1, self.player_count)]:
+            self.send(player, cmd)
     
     # Sends a message to all players except the one with the given id
     def send_others(self, player, cmd):
-        for other_player in [i in range(1, self.player_count) if i != player]:
-            send(other_player, cmd)
+        other_players = [i for i in range(1, self.player_count) if i != player]
+        for other_player in other_players:
+            self.send(other_player, cmd)
     
     def wait_for_players(self):
         map_info = self.get_map_info()
         for player_id in range(1, self.player_count + 1):
             print("Waiting for player to connect to port 16823")
             (self.socket[player_id-1], address1) = self.listener.accept()
-            self.socket[player_id-1] = self.timeout
             self.reader[player_id-1] = self.socket[player_id-1].makefile('r')
             self.writer[player_id-1] = self.socket[player_id-1].makefile('w')
             self.send(player_id, "YOUR_ID %d" % player_id)
@@ -91,7 +92,7 @@ class HexxagonServer:
         if cmd is None:
             return False
 
-        move_match = HexxagonServer.__REGEX_MOVE.match(cmd)
+        move_match = HexagonServer.__REGEX_MOVE.match(cmd)
 
         if move_match is None:
             return False
@@ -137,7 +138,7 @@ class HexxagonServer:
 
                 self.send_others(player_id, cmd)
                 map_info = self.get_map_info()
-                self.send(map_info)
+                self.send_all(map_info)
 
                 winner = self.game.get_winner()
 
@@ -146,6 +147,5 @@ class HexxagonServer:
             if winner != 0:
                 break
         print("Game ended, winner is %d" % winner)
-        self.send1("WINNER %d" % winner)
-        self.send2("WINNER %d" % winner)
+        self.send_all("WINNER %d" % winner)
         

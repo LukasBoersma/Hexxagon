@@ -1,12 +1,12 @@
+#!/usr/bin/python3
 import socket
 import random
 import re
 from pprint import pprint
 
-class HexxagonRandomAi:
-    def __init__(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(("localhost", 16823))
+class HexagonRandomAi:
+    def __init__(self, local_port=16824):
+        self.socket = socket.create_connection(("localhost", 16823), 2, ("localhost", local_port))
         self.reader = self.socket.makefile('r')
         self.writer = self.socket.makefile('w')
 
@@ -28,7 +28,7 @@ class HexxagonRandomAi:
 
     def read_my_id(self):
         cmd = self.read()
-        match = HexxagonRandomAi.__REGEX_YOUR_ID.match(cmd)
+        match = HexagonRandomAi.__REGEX_YOUR_ID.match(cmd)
         if match is None:
             raise Exception("Expected YOUR_ID command, but got something else")
         else:
@@ -37,7 +37,7 @@ class HexxagonRandomAi:
 
     def read_cmd(self):
         cmd = self.read()
-        match = HexxagonRandomAi.__REGEX_MAP.match(cmd)
+        match = HexagonRandomAi.__REGEX_MAP.match(cmd)
         if match is not None:
             map_data = match.group('data')
             v = map_data.split(' ')
@@ -82,6 +82,3 @@ class HexxagonRandomAi:
                 self.read_cmd()
                 # Read map
                 self.read_cmd()
-
-ai = HexxagonRandomAi()
-ai.run()

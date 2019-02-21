@@ -1,10 +1,11 @@
+#!/usr/bin/python3
 from pprint import pprint
 
 class RuleViolation(Exception):
     def __init__(self, move):
         self.move = move
 
-class HexxagonGame:
+class HexagonGame:
 
     FIELD_INVALID = -1
     FIELD_EMPTY = 0
@@ -25,7 +26,7 @@ class HexxagonGame:
         self.field_center_x = field_radius
         self.field_center_y = field_radius
 
-        self.__field = [[HexxagonGame.FIELD_EMPTY for i in range(self.field_size_x)] for i in range(self.field_size_y)]
+        self.__field = [[HexagonGame.FIELD_EMPTY for i in range(self.field_size_x)] for i in range(self.field_size_y)]
 
         # Make map into a "circle",
         # making fields invalid that are too far away from the center
@@ -34,16 +35,16 @@ class HexxagonGame:
             for col in range(self.field_size_x):
                 pos = self.evenq_to_cube((col, row))
                 if self.cube_distance(center, pos) > field_radius:
-                    self.set_field(pos, HexxagonGame.FIELD_INVALID)
+                    self.set_field(pos, HexagonGame.FIELD_INVALID)
         
         # Initialize player start positions
-        self.set_field((0, field_radius, -field_radius), HexxagonGame.FIELD_PLAYER1)
-        self.set_field((field_radius, -field_radius, 0), HexxagonGame.FIELD_PLAYER1)
-        self.set_field((-field_radius, 0, field_radius), HexxagonGame.FIELD_PLAYER1)
+        self.set_field((0, field_radius, -field_radius), HexagonGame.FIELD_PLAYER1)
+        self.set_field((field_radius, -field_radius, 0), HexagonGame.FIELD_PLAYER1)
+        self.set_field((-field_radius, 0, field_radius), HexagonGame.FIELD_PLAYER1)
 
-        self.set_field((field_radius, 0, -field_radius), HexxagonGame.FIELD_PLAYER2)
-        self.set_field((0, -field_radius, field_radius), HexxagonGame.FIELD_PLAYER2)
-        self.set_field((-field_radius, field_radius, 0), HexxagonGame.FIELD_PLAYER2)
+        self.set_field((field_radius, 0, -field_radius), HexagonGame.FIELD_PLAYER2)
+        self.set_field((0, -field_radius, field_radius), HexagonGame.FIELD_PLAYER2)
+        self.set_field((-field_radius, field_radius, 0), HexagonGame.FIELD_PLAYER2)
 
     def __rule_assertion(self, rule, move_info):
         if not rule:
@@ -87,12 +88,12 @@ class HexxagonGame:
 
     def get_neighbor_positions(self, pos):
         x,y,z = pos
-        neighbors = [self.pos_or_none((x+dx, y+dy, z+dz)) for (dx, dy, dz) in HexxagonGame.NEIGHBOR_DIRECTIONS]
+        neighbors = [self.pos_or_none((x+dx, y+dy, z+dz)) for (dx, dy, dz) in HexagonGame.NEIGHBOR_DIRECTIONS]
         valid_neighbors = [pos for pos in neighbors if pos is not None]
         return valid_neighbors
 
     def get_other_player(self, player):
-        return HexxagonGame.FIELD_PLAYER2 if player == HexxagonGame.FIELD_PLAYER1 else HexxagonGame.FIELD_PLAYER1
+        return HexagonGame.FIELD_PLAYER2 if player == HexagonGame.FIELD_PLAYER1 else HexagonGame.FIELD_PLAYER1
 
     def conquer_field(self, player, pos):
         self.set_field(pos, player)
@@ -114,7 +115,7 @@ class HexxagonGame:
         self.__rule_assertion(distance >= 1 and distance <= 3, ("move", from_pos, to_pos, "distance too small or too large"))
 
         if distance == 2:
-            self.set_field(from_pos, HexxagonGame.FIELD_EMPTY)
+            self.set_field(from_pos, HexagonGame.FIELD_EMPTY)
 
         self.conquer_field(player_id, to_pos)
     
@@ -123,11 +124,11 @@ class HexxagonGame:
         count2 = 0
         for row in self.__field:
             for value in row:
-                if value == HexxagonGame.FIELD_EMPTY:
+                if value == HexagonGame.FIELD_EMPTY:
                     return 0
-                elif value == HexxagonGame.FIELD_PLAYER1:
+                elif value == HexagonGame.FIELD_PLAYER1:
                     count1 += 1
-                elif value == HexxagonGame.FIELD_PLAYER2:
+                elif value == HexagonGame.FIELD_PLAYER2:
                     count2 += 1
         if count1 > count2:
             return 1
