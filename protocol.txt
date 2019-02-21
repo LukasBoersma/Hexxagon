@@ -1,15 +1,30 @@
-// Map Coordinates are given in 3d cube coordinates as described here: https://www.redblobgames.com/grids/hexagons/#distances-cube
-
+// All commands are sent in ASCII-text. Each command is terminated with a newline character ('\n')
+// Player 1 always begins.
+// At the start of the game, the server will inform you of your player id like this:
 YOUR_ID 1
 
-// Map is sent in a single line at the start of the game as a list of map fields.
-// Possible field values are:
+// After sending YOUR_ID and after each move, the full map state is sent in a single line
+// Possible field states are:
 // 0: Empty field
 // 1: Occupied by player 1
 // 2: Occupied by player 2
+// Map Coordinates are given in 3d cube coordinates as described here: https://www.redblobgames.com/grids/hexagons/
 MAP x1 y1 z1 value_1 x2 y2 z2 value_2 ...
 
+// To make a move, send the MOVE command to the server.
+// After each move, the server forwards the same move command to the other player
 MOVE x1 y1 z1 x2 y2 z2
-DISQUALIFIED message
+
+// If something goes wrong, this command is sent by the server, indicating the error in a text message:
+DISQUALIFIED player_id message
+
+// When a player can not move, the server sends to both players:
+PLAYER_CANT_MOVE
+
+// If the game is over, the server sends this command:
 WINNER 1
+
+// When no player can make a move, this is sent by the server:
+DRAW
+
 

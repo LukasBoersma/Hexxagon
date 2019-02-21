@@ -5,38 +5,42 @@ import re
 from pprint import pprint, pformat
 
 class HexxagonServer:
-    def __init__(self):
+    def __init__(self, player_count, timeout):
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listener.bind(("localhost", 16823))
         self.listener.listen(5)
 
         self.game = HexxagonGame()
+        self.player_count = player_count
+        self.timeout = timeout
+        self.socket = [None] * player_count
+        self.writer = [None] * player_count
+        self.reader = [None] * player_count
 
-    def send1(self, cmd):
-        self.p1_writer.write(cmd+"\n")
-        self.p1_writer.flush()
-    def send2(self, cmd):
-        self.p2_writer.write(cmd+"\n")
-        self.p2_writer.flush()
-    def read1(self):
-        return self.p1_reader.readline().strip()
-    def read2(self):
-        return self.p2_reader.readline().strip()
+    def send(self, player, cmd):
+        self.writer[player-1].write(cmd+"\n")
+        self.writer[player-1].flush()
+    def read(self, player):
+        return self.reader[player-1].readline().strip()
+    def send_all(self, cmd):
+        for player in [i in range(1, self.player_count)]:
+            send(player, cmd)
+    
+    # Sends a message to all players except the one with the given id
+    def send_others(self, player, cmd):
+        for other_player in [i in range(1, self.player_count) if i != player]:
+            send(other_player, cmd)
     
     def wait_for_players(self):
-        print("Waiting for player 1 to connect to port 16823")
-        (self.p1_socket, address1) = self.listener.accept()
-        print("Waiting for player 2 to connect to port 16823")
-        (self.p2_socket, address2) = self.listener.accept()
-        self.p1_reader = self.p1_socket.makefile('r')
-        self.p2_reader = self.p2_socket.makefile('r')
-        self.p1_writer = self.p1_socket.makefile('w')
-        self.p2_writer = self.p2_socket.makefile('w')
         map_info = self.get_map_info()
-        self.send1("YOUR_ID 1")
-        self.send1(map_info)
-        self.send2("YOUR_ID 2")
-        self.send2(map_info)
+        for player_id in range(1, self.player_count + 1):
+            print("Waiting for player to connect to port 16823")
+            (self.socket[player_id-1], address1) = self.listener.accept()
+            self.socket[player_id-1] = self.timeout
+            self.reader[player_id-1] = self.socket[player_id-1].makefile('r')
+            self.writer[player_id-1] = self.socket[player_id-1].makefile('w')
+            self.send(player_id, "YOUR_ID %d" % player_id)
+            self.send(player_id, map_info)
 
     def get_map_info(self):
         map = "MAP"
@@ -111,65 +115,34 @@ class HexxagonServer:
         self.print_map()
 
         while True:
+            for player_id in range(1, self.player_count+1):
+                cmd = self.read(player_id)
+                print("Received move from player %d: %s" % (player_id, cmd))
 
-            cmd_p1 = self.read1()
-            print("Received move from player 1: " + cmd_p1)
-
-            try:
-                move1_ok = self.parse_cmd(1, cmd_p1)
+                try:
+                    cmd_parse_ok = self.parse_cmd(player_id, cmd)
+                except RuleViolation as violation:
+                    self.send(player_id, "DISQUALIFIED rule violation "+pformat(violation))
+                    winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
+                    print("Ending game because of rule violation")
+                    break
+                if not cmd_parse_ok:
+                    self.send(player_id, "DISQUALIFIED invalid command syntax")
+                    winner = (player_id%self.player_count) + 1 # Player who would have next turn wins
+                    print("Ending game because of rule violation")
+                    break
                 
-                if not move1_ok:
-                    self.send1("DISQUALIFIED invalid command syntax")
-                    winner = 2
-                    print("Ending game because of rule violation")
+                print("Map after player %d move:" % player_id)
+                self.print_map()
+
+                self.send_others(player_id, cmd)
+                map_info = self.get_map_info()
+                self.send(map_info)
+
+                winner = self.game.get_winner()
+
+                if winner != 0:
                     break
-            except RuleViolation as violation:
-                self.send1("DISQUALIFIED rule violation "+pformat(violation))
-                winner = 2
-                print("Ending game because of rule violation")
-                break
-            
-            print("Map after player 1 move:")
-            self.print_map()
-
-            self.send2(cmd_p1)
-            map_info = self.get_map_info()
-            self.send1(map_info)
-            self.send2(map_info)
-
-            winner = self.game.get_winner()
-
-            if winner != 0:
-                break
-
-            cmd_p2 = self.read2()
-            print("Received move from player 2: " + cmd_p2)
-
-            try:
-                move2_ok = self.parse_cmd(2, cmd_p2)
-
-                if not move2_ok:
-                    self.send2("DISQUALIFIED invalid command syntax")
-                    winner = 1
-                    print("Ending game because of rule violation")
-                    break
-            except RuleViolation as violation:
-                self.send2("DISQUALIFIED rule violation"+pformat(violation))
-                winner = 1
-                print("Ending game because of rule violation")
-                break
-
-            print("Map after player 2 move:")
-            self.print_map()
-
-            self.send1(cmd_p2)
-            map_info = self.get_map_info()
-            self.send1(map_info)
-            self.send2(map_info)
-
-
-            winner = self.game.get_winner()
-
             if winner != 0:
                 break
         print("Game ended, winner is %d" % winner)
