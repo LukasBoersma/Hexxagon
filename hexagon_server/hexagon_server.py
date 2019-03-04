@@ -8,8 +8,7 @@ from pprint import pprint, pformat
 class HexagonServer:
     def __init__(self, player_count, timeout):
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.listener.bind(("localhost", 16823))
-        self.listener.listen(5)
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         self.game = HexagonGame()
         self.player_count = player_count
@@ -109,6 +108,9 @@ class HexagonServer:
 
     def run(self):
         try:
+            self.listener.bind(("localhost", 16823))
+            self.listener.listen(5)
+
             self.wait_for_players()
 
             winner = 0
