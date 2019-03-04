@@ -117,11 +117,7 @@ class HexagonServer:
 
             print("Initial map:")
             self.print_map()
-            any_move_possible = True
             while True:
-                if not any_move_possible:
-                    print("Nobody can move. Exiting.")
-                any_move_possible = False
                 for player_id in range(1, self.player_count+1):
                     if not self.game.can_move(player_id):
                         self.send_all("PLAYER_CANT_MOVE")
@@ -156,10 +152,10 @@ class HexagonServer:
                         break
                 if winner != 0:
                     break
-            if winner == 0:
+            if winner < 0:
                 print("Game ended with a draw" % winner)
                 self.send_all("DRAW")
-            else:
+            elif winner >= 0:
                 print("Game ended, winner is %d" % winner)
                 self.send_all("WINNER %d" % winner)
         finally:

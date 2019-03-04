@@ -150,15 +150,19 @@ class HexagonGame:
     def get_winner(self):
         count1 = 0
         count2 = 0
+
+        if self.can_move(1) or self.can_move(2):
+            return 0
+
         for row in self.__field:
             for value in row:
-                if value == HexagonGame.FIELD_EMPTY:
-                    return 0
-                elif value == HexagonGame.FIELD_PLAYER1:
+                if value == HexagonGame.FIELD_PLAYER1:
                     count1 += 1
                 elif value == HexagonGame.FIELD_PLAYER2:
                     count2 += 1
         if count1 > count2:
             return 1
-        else:
+        elif count2 > count1:
             return 2
+        else:
+            return -1
