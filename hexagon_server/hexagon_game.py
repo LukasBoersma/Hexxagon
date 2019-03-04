@@ -27,9 +27,7 @@ class HexagonGame:
         (-1, +2, -1)
     ]
 
-    def __init__(self):
-
-        field_radius = 4
+    def __init__(self, field_radius=4):
 
         self.field_size_x = field_radius*2 + 1
         self.field_size_y = field_radius*2 + 1
@@ -151,6 +149,7 @@ class HexagonGame:
         count1 = 0
         count2 = 0
 
+        # If players can still move, there is no winner yet
         if self.can_move(1) or self.can_move(2):
             return 0
 

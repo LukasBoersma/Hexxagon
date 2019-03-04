@@ -210,3 +210,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.gitignore.io/api/vim,osx,linux,python,windows
+
+# VS Code
+.vscode/

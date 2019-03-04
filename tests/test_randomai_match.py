@@ -2,6 +2,7 @@
 import sys, os
 from threading import Thread
 from time import sleep
+import unittest
 
 sys.path.insert(0, os.path.abspath('..'))
 from hexagon_server import HexagonServer
@@ -23,20 +24,21 @@ def run_host():
     test_server_ready = True
     server.run()
 
-def test_randomai_match():
-    thread_host = Thread(target = run_host)
-    thread_host.start()
+class TestRandomAiMatch(unittest.TestCase):
+    def test_randomai_match(self):
+        thread_host = Thread(target = run_host)
+        thread_host.start()
 
-    global test_server_ready
-    while not test_server_ready:
+        global test_server_ready
+        while not test_server_ready:
+            sleep(0.1)
+
+        thread_client1 = Thread(target = run_client)
+        thread_client1.start()
         sleep(0.1)
+        thread_client2 = Thread(target = run_client)
+        thread_client2.start()
 
-    thread_client1 = Thread(target = run_client)
-    thread_client1.start()
-    sleep(0.1)
-    thread_client2 = Thread(target = run_client)
-    thread_client2.start()
-
-    thread_host.join()
-    thread_client1.join()
-    thread_client2.join()
+        thread_host.join()
+        thread_client1.join()
+        thread_client2.join()

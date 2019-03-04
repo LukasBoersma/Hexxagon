@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
-from tests import test_randomai_match
+import unittest
+from tests.test_game_state import TestGameState
+from tests.test_randomai_match import TestRandomAiMatch
 
-test_randomai_match.test_randomai_match()
+unittest.main()
