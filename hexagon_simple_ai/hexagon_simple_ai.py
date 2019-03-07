@@ -2,9 +2,15 @@
 import socket
 import random
 import re
+import math
 from pprint import pprint
+import sys
+import os
 
-class HexagonRandomAi:
+sys.path.insert(0, os.path.abspath('..'))
+from hexagon_server import HexagonGame
+
+class HexagonSimpleAi:
     def __init__(self):
         timeout = 60
         self.running = True
@@ -12,10 +18,6 @@ class HexagonRandomAi:
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.connect(("localhost", 16823))
-
-        self.reader = self.socket.makefile('r')
-        self.writer = self.socket.makefile('w')
-
 
         self.reader = self.socket.makefile('r')
         self.writer = self.socket.makefile('w')
@@ -43,12 +45,47 @@ class HexagonRandomAi:
     __REGEX_MAP = re.compile(r'^MAP (?P<data>[0-9 \-]+)$')
     __REGEX_MOVE = re.compile(r'^MOVE (?P<x1>\-?[0-9]+) (?P<y1>\-?[0-9]+) (?P<z1>\-?[0-9]+) (?P<x2>\-?[0-9]+) (?P<y2>\-?[0-9]+) (?P<z2>\-?[0-9]+)$')
 
+    def simulate_move(self, current_map, source_field, target_field):
+        (sx, sy, sz, sv) = source_field
+        (tx, ty, tz, tv) = target_field
+
+        source_player = sv
+        source_pos = (sx, sy, sz)
+        target_pos = (tx, ty, tz)
+        resulting_map = current_map[:] #create a copy of the map
+        for i in range(len(resulting_map)):
+            (x, y, z, v) = resulting_map[i]
+            pos = (x, y, z)
+            if pos == source_field:
+                v = 0
+            elif pos == source_pos or self.cube_distance(pos, target_pos) == 1:
+                v = source_player
+            resulting_map[i] = (x, y, z, v)
+        return resulting_map
+
+    def get_score(self, scored_map, scored_player):
+        counts = [0 for i in range(3)]
+        for (x, y, z, v) in scored_map:
+            counts[v] += 1
+        
+        if counts[0] == 0:
+            if counts[1] > counts[2]:
+                return math.inf if scored_player == 1 else -math.inf
+            elif counts[2] > counts[1]:
+                return math.inf if scored_player == 2 else -math.inf
+            else:
+                return 0
+        else:
+            player1_factor = 1 if scored_player == 1 else -1
+            return (counts[1] - counts[2]) * player1_factor
+
+
     def read_my_id(self):
         cmd = self.read()
         if cmd is None:
             return
 
-        match = HexagonRandomAi.__REGEX_YOUR_ID.match(cmd)
+        match = HexagonSimpleAi.__REGEX_YOUR_ID.match(cmd)
         if match is None:
             raise Exception("Expected YOUR_ID command, but got something else")
         else:
@@ -60,44 +97,67 @@ class HexagonRandomAi:
         if cmd is None:
             return
         
-        map_match = HexagonRandomAi.__REGEX_MAP.match(cmd)
+        map_match = HexagonSimpleAi.__REGEX_MAP.match(cmd)
         if map_match is not None:
             map_data = map_match.group('data')
             v = map_data.split(' ')
             v = [int(x) for x in v]
             size = int(len(v)/4)
             self.map = [(v[i*4+0],v[i*4+1],v[i*4+2],v[i*4+3]) for i in range(size)]
-        elif HexagonRandomAi.__REGEX_WINNER.match(cmd) is not None:
+        elif HexagonSimpleAi.__REGEX_WINNER.match(cmd) is not None:
             print("Game ended.")
             self.running = False
-        elif HexagonRandomAi.__REGEX_MOVE.match(cmd) is not None:
+        elif HexagonSimpleAi.__REGEX_MOVE.match(cmd) is not None:
             return # Ignore move commands from server
         else:
             # Print a warning when receiving anything other than above
             print("Warning: Ignoring unrecognized command: '"+cmd+"'")
 
     def do_move(self):
-        random_map = self.map[:]
-        random.shuffle(random_map)
 
-        owned_fields = [(x,y,z,v) for (x,y,z,v) in random_map if v == self.my_id]
+        owned_fields = [(x,y,z,v) for (x,y,z,v) in self.map if v == self.my_id]
         if len(owned_fields) == 0:
             print("No owned fields found!")
             return
+
+        possible_moves = []
+
         for owned_field in owned_fields:
             (x,y,z,v) = owned_field
             pos = (x,y,z)
-            valid_neighbors = [(x2,y2,z2,v2) for (x2,y2,z2,v2) in random_map if v2 == 0 and self.cube_distance(pos, (x2, y2, z2)) in [1,2]]
+            valid_neighbors = [(x2,y2,z2,v2) for (x2,y2,z2,v2) in self.map if v2 == 0 and self.cube_distance(pos, (x2, y2, z2)) in [1,2]]
             if len(valid_neighbors) == 0:
-                continue
+                continue # Cannot do any moves from that field
             else:
-                (x2,y2,z2,v2) = valid_neighbors[0]
-                self.send("MOVE %d %d %d %d %d %d" % (x, y, z, x2, y2, z2))
-                return
-        # Read "player_cant_move"
-        print("No valid move available. Skipping my turn.")
-        self.read_cmd()
+                # Every entry in valid_neighbors represents a valid move.
+                for target_field in valid_neighbors:
+                    possible_moves.append((owned_field, target_field))
 
+        if len(possible_moves) == 0:
+            # Read "player_cant_move"
+            print("No valid move available. Skipping my turn.")
+            self.read_cmd()
+
+        # Add randomness by shuffling moves.
+        # If there are multiple moves with the same score, will result in a random selection of those.
+        random.shuffle(possible_moves)
+
+        best_score = -math.inf
+        best_move = possible_moves[0]
+
+        print("Considering %d possible moves" % len(possible_moves))
+
+        # Evaluate all moves
+        for move in possible_moves:
+            source, target = move
+            score = self.get_score(self.simulate_move(self.map, source, target), self.my_id)
+            if score > best_score:
+                best_score = score
+                best_move = move
+
+        # Send the best found move
+        (x, y, z, v), (x2, y2, z2, v2) = move
+        self.send("MOVE %d %d %d %d %d %d" % (x, y, z, x2, y2, z2))
 
     def run(self):
         try:
